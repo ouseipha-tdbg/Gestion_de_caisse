@@ -49,11 +49,17 @@ describe("Export des ventes (Excel)", () => {
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(res.body);
-    const sheet = workbook.getWorksheet("Ventes par mois");
 
-    const totalRow = sheet.getRow(sheet.rowCount);
+    const summarySheet = workbook.getWorksheet("Résumé");
+    const totalRow = summarySheet.getRow(summarySheet.rowCount);
     expect(totalRow.getCell(1).value).toBe("TOTAL");
     expect(totalRow.getCell(2).value).toBe(1);
     expect(totalRow.getCell(3).value).toBe(1500);
+
+    const detailSheet = workbook.getWorksheet("Articles vendus");
+    const detailRow = detailSheet.getRow(2);
+    expect(detailRow.getCell(2).value).toBe("Café");
+    expect(detailRow.getCell(3).value).toBe(3);
+    expect(detailRow.getCell(4).value).toBe(1500);
   });
 });
