@@ -1,16 +1,38 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertCircle, Package, ImagePlus } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { formatCFA } from "../utils/currency";
+import { resizeImageToSquare } from "../utils/image";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Badge from "../components/ui/Badge";
 import Modal from "../components/ui/Modal";
 
-const emptyForm = { name: "", price: "", stock: "" };
+const emptyForm = { name: "", price: "", stock: "", image: "" };
+
+function ProductThumbnail({ image, size = 36 }) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt=""
+        className="rounded-lg object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg bg-slate-100 text-slate-300"
+      style={{ width: size, height: size }}
+    >
+      <Package size={size * 0.5} />
+    </div>
+  );
+}
 
 export default function Produits() {
   const { user } = useAuth();
@@ -45,9 +67,20 @@ export default function Produits() {
 
   function openEdit(p) {
     setEditingId(p.id);
-    setForm({ name: p.name, price: String(p.price), stock: String(p.stock) });
+    setForm({ name: p.name, price: String(p.price), stock: String(p.stock), image: p.image || "" });
     setFormError("");
     setModalOpen(true);
+  }
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const resized = await resizeImageToSquare(file);
+      setForm((f) => ({ ...f, image: resized }));
+    } catch {
+      setFormError("Impossible de charger cette image");
+    }
   }
 
   async function handleSubmit(e) {
@@ -58,6 +91,7 @@ export default function Produits() {
         name: form.name,
         price: Math.round(Number(form.price)),
         stock: trackStock ? Math.round(Number(form.stock)) || 0 : 0,
+        image: form.image || null,
       };
       if (editingId) {
         await api.put(`/products/${editingId}`, payload);
@@ -90,7 +124,7 @@ export default function Produits() {
     return <Badge variant="green">{stock} en stock</Badge>;
   }
 
-  const colSpan = isAdmin ? (trackStock ? 4 : 3) : trackStock ? 3 : 2;
+  const colSpan = isAdmin ? (trackStock ? 5 : 4) : trackStock ? 4 : 3;
 
   return (
     <div className="p-6">
@@ -122,6 +156,7 @@ export default function Produits() {
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr>
+              <th className="px-4 py-3"></th>
               <th className="px-4 py-3 text-left font-medium text-slate-500">Nom</th>
               <th className="px-4 py-3 text-left font-medium text-slate-500">Prix</th>
               {trackStock && <th className="px-4 py-3 text-left font-medium text-slate-500">Stock</th>}
@@ -131,6 +166,9 @@ export default function Produits() {
           <tbody className="divide-y divide-slate-100">
             {produitsFiltres.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3">
+                  <ProductThumbnail image={p.image} />
+                </td>
                 <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
                 <td className="px-4 py-3 text-slate-600">{formatCFA(p.price)}</td>
                 {trackStock && <td className="px-4 py-3">{stockBadge(p.stock)}</td>}
@@ -179,6 +217,20 @@ export default function Produits() {
               {formError}
             </div>
           )}
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Image du produit</span>
+            <div className="flex items-center gap-3">
+              <ProductThumbnail image={form.image} size={64} />
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                <ImagePlus size={16} />
+                {form.image ? "Changer" : "Choisir une image"}
+                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">Recadrée automatiquement en carré (format standard des tickets de caisse).</p>
+          </label>
+
           <Input
             label="Nom"
             value={form.name}

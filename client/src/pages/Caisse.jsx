@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Minus, Trash2, ShoppingCart, AlertCircle, Printer } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, AlertCircle, Printer, Package } from "lucide-react";
 import api from "../api";
 import { useSettings } from "../context/SettingsContext";
 import { formatCFA } from "../utils/currency";
@@ -106,15 +106,26 @@ export default function Caisse() {
                 key={p.id}
                 onClick={() => ajouterAuPanier(p)}
                 disabled={epuise || (trackStock && enPanier >= p.stock)}
-                className="flex flex-col items-start rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-indigo-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-all hover:border-indigo-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span className="mb-1 text-sm font-medium text-slate-900">{p.name}</span>
-                <span className="mb-2 text-lg font-semibold text-indigo-600">{formatCFA(p.price)}</span>
-                {trackStock && (
-                  <span className={`text-xs ${epuise ? "text-red-500" : "text-slate-400"}`}>
-                    {epuise ? "Rupture de stock" : `${p.stock} en stock`}
-                  </span>
-                )}
+                <div className="aspect-square w-full bg-slate-100">
+                  {p.image ? (
+                    <img src={p.image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-slate-300">
+                      <Package size={32} />
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <span className="mb-1 block text-sm font-medium text-slate-900">{p.name}</span>
+                  <span className="mb-1 block text-base font-semibold text-indigo-600">{formatCFA(p.price)}</span>
+                  {trackStock && (
+                    <span className={`text-xs ${epuise ? "text-red-500" : "text-slate-400"}`}>
+                      {epuise ? "Rupture de stock" : `${p.stock} en stock`}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
