@@ -7,6 +7,7 @@ import Produits from "./pages/Produits";
 import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
 import Utilisateurs from "./pages/Utilisateurs";
+import Ventes from "./pages/Ventes";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
       >
         <Route path="/" element={<Caisse />} />
         <Route path="/produits" element={<Produits />} />
+        <Route path="/ventes" element={<Ventes />} />
         <Route path="/rapports" element={<Rapports />} />
         <Route
           path="/utilisateurs"

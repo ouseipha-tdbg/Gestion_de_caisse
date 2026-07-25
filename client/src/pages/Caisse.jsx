@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, AlertCircle, Printer } from "lucide-react";
 import api from "../api";
 import { useSettings } from "../context/SettingsContext";
 import { formatCFA } from "../utils/currency";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
+import Modal from "../components/ui/Modal";
+import Receipt from "../components/Receipt";
 
 export default function Caisse() {
   const { settings } = useSettings();
@@ -13,9 +15,9 @@ export default function Caisse() {
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState("");
   const [panier, setPanier] = useState({}); // { [productId]: quantity }
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lastSale, setLastSale] = useState(null);
 
   async function charger() {
     const { data } = await api.get("/products");
@@ -68,12 +70,11 @@ export default function Caisse() {
 
   async function handleValider() {
     setError("");
-    setMessage("");
     setSubmitting(true);
     try {
       const items = lignes.map((l) => ({ productId: l.produit.id, quantity: l.quantity }));
-      await api.post("/sales", { items });
-      setMessage("Vente enregistrée avec succès.");
+      const { data } = await api.post("/sales", { items });
+      setLastSale(data);
       setPanier({});
       charger();
     } catch (err) {
@@ -172,12 +173,6 @@ export default function Caisse() {
         </div>
 
         <div className="border-t border-slate-200 px-5 py-4">
-          {message && (
-            <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              <CheckCircle2 size={16} />
-              {message}
-            </div>
-          )}
           {error && (
             <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               <AlertCircle size={16} />
@@ -193,6 +188,18 @@ export default function Caisse() {
           </Button>
         </div>
       </aside>
+
+      <Modal open={!!lastSale} onClose={() => setLastSale(null)} title="Vente enregistrée">
+        <Receipt sale={lastSale} settings={settings} />
+        <div className="mt-4 flex justify-end gap-2 print:hidden">
+          <Button variant="secondary" onClick={() => setLastSale(null)}>
+            Fermer
+          </Button>
+          <Button onClick={() => window.print()}>
+            <Printer size={14} /> Imprimer
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
