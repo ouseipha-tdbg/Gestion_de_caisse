@@ -6,6 +6,7 @@ import Caisse from "./pages/Caisse";
 import Produits from "./pages/Produits";
 import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
+import Utilisateurs from "./pages/Utilisateurs";
 
 export default function App() {
   return (
@@ -21,6 +22,14 @@ export default function App() {
         <Route path="/" element={<Caisse />} />
         <Route path="/produits" element={<Produits />} />
         <Route path="/rapports" element={<Rapports />} />
+        <Route
+          path="/utilisateurs"
+          element={
+            <ProtectedRoute adminOnly>
+              <Utilisateurs />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/parametres"
           element={
