@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, Search, AlertCircle } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Badge from "../components/ui/Badge";
+import Modal from "../components/ui/Modal";
+
+const emptyForm = { name: "", price: "", stock: "" };
 
 export default function Produits() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
 
   const [produits, setProduits] = useState([]);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", price: "", stock: "" });
-  const [rowError, setRowError] = useState("");
+  const [form, setForm] = useState(emptyForm);
+  const [formError, setFormError] = useState("");
 
   async function charger() {
     const { data } = await api.get("/products");
@@ -25,138 +32,173 @@ export default function Produits() {
     charger();
   }, []);
 
-  async function handleAdd(e) {
+  function openCreate() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormError("");
+    setModalOpen(true);
+  }
+
+  function openEdit(p) {
+    setEditingId(p.id);
+    setForm({ name: p.name, price: String(p.price), stock: String(p.stock) });
+    setFormError("");
+    setModalOpen(true);
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    setError("");
+    setFormError("");
     try {
-      await api.post("/products", { name, price: Number(price), stock: Number(stock) || 0 });
-      setName("");
-      setPrice("");
-      setStock("");
+      const payload = { name: form.name, price: Number(form.price), stock: Number(form.stock) || 0 };
+      if (editingId) {
+        await api.put(`/products/${editingId}`, payload);
+      } else {
+        await api.post("/products", payload);
+      }
+      setModalOpen(false);
       charger();
-    } catch {
-      setError("Impossible d'ajouter le produit");
+    } catch (err) {
+      setFormError(err.response?.data?.error || "Une erreur est survenue");
     }
   }
 
   async function handleDelete(id) {
-    setRowError("");
+    if (!window.confirm("Supprimer ce produit ?")) return;
+    setError("");
     try {
       await api.delete(`/products/${id}`);
       charger();
     } catch (err) {
-      setRowError(err.response?.data?.error || "Impossible de supprimer ce produit");
+      setError(err.response?.data?.error || "Impossible de supprimer ce produit");
     }
   }
 
-  function startEdit(p) {
-    setRowError("");
-    setEditingId(p.id);
-    setEditForm({ name: p.name, price: Number(p.price), stock: p.stock });
-  }
+  const produitsFiltres = produits.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  function cancelEdit() {
-    setEditingId(null);
-  }
-
-  async function saveEdit(id) {
-    setRowError("");
-    try {
-      await api.put(`/products/${id}`, {
-        name: editForm.name,
-        price: Number(editForm.price),
-        stock: Number(editForm.stock),
-      });
-      setEditingId(null);
-      charger();
-    } catch (err) {
-      setRowError(err.response?.data?.error || "Impossible de modifier ce produit");
-    }
+  function stockBadge(stock) {
+    if (stock <= 0) return <Badge variant="red">Rupture</Badge>;
+    if (stock < 5) return <Badge variant="amber">Stock bas ({stock})</Badge>;
+    return <Badge variant="green">{stock} en stock</Badge>;
   }
 
   return (
-    <div className="page">
-      <h1>Produits</h1>
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Produits</h1>
+        {isAdmin && (
+          <Button onClick={openCreate}>
+            <Plus size={16} /> Nouveau produit
+          </Button>
+        )}
+      </div>
 
-      {isAdmin && (
-        <form className="card" onSubmit={handleAdd}>
-          <h2>Ajouter un produit</h2>
-          {error && <p className="error">{error}</p>}
-          <label>
-            Nom
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <label>
-            Prix
-            <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required />
-          </label>
-          <label>
-            Stock
-            <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} />
-          </label>
-          <button type="submit">Ajouter</button>
-        </form>
+      {error && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle size={16} />
+          {error}
+        </div>
       )}
 
-      {rowError && <p className="error">{rowError}</p>}
+      <Input
+        icon={Search}
+        placeholder="Rechercher un produit..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        wrapperClassName="mb-4 max-w-sm"
+      />
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Nom</th>
-            <th>Prix</th>
-            <th>Stock</th>
-            {isAdmin && <th></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {produits.map((p) =>
-            editingId === p.id ? (
-              <tr key={p.id}>
-                <td>
-                  <input
-                    value={editForm.name}
-                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editForm.price}
-                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.stock}
-                    onChange={(e) => setEditForm((f) => ({ ...f, stock: e.target.value }))}
-                  />
-                </td>
-                <td>
-                  <button onClick={() => saveEdit(p.id)}>Enregistrer</button>
-                  <button onClick={cancelEdit}>Annuler</button>
-                </td>
-              </tr>
-            ) : (
-              <tr key={p.id}>
-                <td>{p.name}</td>
-                <td>{Number(p.price).toFixed(2)}</td>
-                <td>{p.stock}</td>
+      <Card className="overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium text-slate-500">Nom</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-500">Prix</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-500">Stock</th>
+              {isAdmin && <th className="px-4 py-3"></th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {produitsFiltres.map((p) => (
+              <tr key={p.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
+                <td className="px-4 py-3 text-slate-600">{Number(p.price).toFixed(2)} €</td>
+                <td className="px-4 py-3">{stockBadge(p.stock)}</td>
                 {isAdmin && (
-                  <td>
-                    <button onClick={() => startEdit(p)}>Modifier</button>
-                    <button onClick={() => handleDelete(p.id)}>Supprimer</button>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(p)}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-indigo-600"
+                        aria-label={`Modifier ${p.name}`}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        aria-label={`Supprimer ${p.name}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>
-            )
+            ))}
+            {produitsFiltres.length === 0 && (
+              <tr>
+                <td colSpan={isAdmin ? 4 : 3} className="px-4 py-8 text-center text-slate-400">
+                  Aucun produit
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingId ? "Modifier le produit" : "Nouveau produit"}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <AlertCircle size={16} />
+              {formError}
+            </div>
           )}
-        </tbody>
-      </table>
+          <Input
+            label="Nom"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            required
+          />
+          <Input
+            label="Prix"
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.price}
+            onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+            required
+          />
+          <Input
+            label="Stock"
+            type="number"
+            min="0"
+            value={form.stock}
+            onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button type="submit">{editingId ? "Enregistrer" : "Créer"}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
