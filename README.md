@@ -53,3 +53,24 @@ curl -X POST http://localhost:4000/api/whatsapp/send-daily-report \
 
 - `ADMIN` : gère les produits, consulte les rapports, peut déclencher l'envoi WhatsApp
 - `CASHIER` : enregistre les ventes, consulte les rapports
+
+## Tests
+
+### Backend
+
+Les tests tournent sur une base PostgreSQL dédiée (jamais la base de dev), vidée avant chaque test.
+
+```bash
+cd server
+cp .env.test.example .env.test   # renseigner DATABASE_URL (créer la base au préalable, ex: gestion_caisse_test)
+npm test
+```
+
+Le script `pretest` applique automatiquement les migrations Prisma sur la base de test.
+
+### Frontend
+
+```bash
+cd client
+npm test
+```

@@ -12,6 +12,10 @@ export default function Produits() {
   const [stock, setStock] = useState("");
   const [error, setError] = useState("");
 
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", price: "", stock: "" });
+  const [rowError, setRowError] = useState("");
+
   async function charger() {
     const { data } = await api.get("/products");
     setProduits(data);
@@ -36,8 +40,38 @@ export default function Produits() {
   }
 
   async function handleDelete(id) {
-    await api.delete(`/products/${id}`);
-    charger();
+    setRowError("");
+    try {
+      await api.delete(`/products/${id}`);
+      charger();
+    } catch (err) {
+      setRowError(err.response?.data?.error || "Impossible de supprimer ce produit");
+    }
+  }
+
+  function startEdit(p) {
+    setRowError("");
+    setEditingId(p.id);
+    setEditForm({ name: p.name, price: Number(p.price), stock: p.stock });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(id) {
+    setRowError("");
+    try {
+      await api.put(`/products/${id}`, {
+        name: editForm.name,
+        price: Number(editForm.price),
+        stock: Number(editForm.stock),
+      });
+      setEditingId(null);
+      charger();
+    } catch (err) {
+      setRowError(err.response?.data?.error || "Impossible de modifier ce produit");
+    }
   }
 
   return (
@@ -54,15 +88,17 @@ export default function Produits() {
           </label>
           <label>
             Prix
-            <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />
+            <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required />
           </label>
           <label>
             Stock
-            <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} />
+            <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} />
           </label>
           <button type="submit">Ajouter</button>
         </form>
       )}
+
+      {rowError && <p className="error">{rowError}</p>}
 
       <table className="table">
         <thead>
@@ -74,18 +110,51 @@ export default function Produits() {
           </tr>
         </thead>
         <tbody>
-          {produits.map((p) => (
-            <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>{Number(p.price).toFixed(2)}</td>
-              <td>{p.stock}</td>
-              {isAdmin && (
+          {produits.map((p) =>
+            editingId === p.id ? (
+              <tr key={p.id}>
                 <td>
-                  <button onClick={() => handleDelete(p.id)}>Supprimer</button>
+                  <input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  />
                 </td>
-              )}
-            </tr>
-          ))}
+                <td>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.stock}
+                    onChange={(e) => setEditForm((f) => ({ ...f, stock: e.target.value }))}
+                  />
+                </td>
+                <td>
+                  <button onClick={() => saveEdit(p.id)}>Enregistrer</button>
+                  <button onClick={cancelEdit}>Annuler</button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={p.id}>
+                <td>{p.name}</td>
+                <td>{Number(p.price).toFixed(2)}</td>
+                <td>{p.stock}</td>
+                {isAdmin && (
+                  <td>
+                    <button onClick={() => startEdit(p)}>Modifier</button>
+                    <button onClick={() => handleDelete(p.id)}>Supprimer</button>
+                  </td>
+                )}
+              </tr>
+            )
+          )}
         </tbody>
       </table>
     </div>

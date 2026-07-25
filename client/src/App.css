@@ -73,6 +73,17 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.table td button + button {
+  margin-left: 0.5rem;
+}
+
+.table td input {
+  padding: 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  width: 100%;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
