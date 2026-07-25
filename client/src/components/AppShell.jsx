@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ShoppingCart, Package, BarChart3, LogOut, Settings } from "lucide-react";
+import { ShoppingCart, Package, BarChart3, LogOut, Settings, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 
@@ -7,6 +7,7 @@ const navItems = [
   { to: "/", label: "Caisse", icon: ShoppingCart },
   { to: "/produits", label: "Produits", icon: Package },
   { to: "/rapports", label: "Rapports", icon: BarChart3 },
+  { to: "/utilisateurs", label: "Utilisateurs", icon: Users, adminOnly: true },
   { to: "/parametres", label: "Paramètres", icon: Settings, adminOnly: true },
 ];
 
