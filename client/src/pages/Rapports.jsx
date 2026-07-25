@@ -1,13 +1,32 @@
-import { useEffect, useState } from "react";
-import { Calendar, Receipt, Wallet } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Calendar, Receipt, Wallet, Download, AlertCircle } from "lucide-react";
 import api from "../api";
 import { formatCFA } from "../utils/currency";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import MonthMultiSelect from "../components/MonthMultiSelect";
+
+function getLastMonths(n = 12) {
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    months.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) });
+  }
+  return months;
+}
 
 export default function Rapports() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [rapport, setRapport] = useState(null);
+
+  const monthOptions = useMemo(() => getLastMonths(12), []);
+  const [selectedMonths, setSelectedMonths] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   useEffect(() => {
     api.get("/reports/daily", { params: { date } }).then(({ data }) => setRapport(data));
@@ -15,6 +34,29 @@ export default function Rapports() {
 
   const produitsTries = rapport ? Object.entries(rapport.parProduit).sort((a, b) => b[1] - a[1]) : [];
   const maxQuantite = produitsTries[0]?.[1] || 1;
+
+  async function handleDownload() {
+    setExportError("");
+    setExporting(true);
+    try {
+      const res = await api.get("/reports/export", {
+        params: { months: selectedMonths.join(",") },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ventes_${selectedMonths.join("_")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Impossible de générer le fichier Excel");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="p-6">
@@ -28,6 +70,22 @@ export default function Rapports() {
           wrapperClassName="w-44"
         />
       </div>
+
+      <Card className="mb-6 p-5">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Exporter le total des ventes (Excel)</h2>
+        {exportError && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <AlertCircle size={16} />
+            {exportError}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <MonthMultiSelect options={monthOptions} selected={selectedMonths} onChange={setSelectedMonths} />
+          <Button onClick={handleDownload} disabled={selectedMonths.length === 0 || exporting}>
+            <Download size={16} /> {exporting ? "Génération..." : "Télécharger"}
+          </Button>
+        </div>
+      </Card>
 
       {rapport && (
         <>

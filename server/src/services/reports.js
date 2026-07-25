@@ -30,4 +30,22 @@ async function getDailyReport(dateInput = new Date()) {
   };
 }
 
-module.exports = { getDailyReport };
+// year: ex. 2026, month: 1-12
+async function getMonthlyReport(year, month) {
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const end = new Date(year, month, 0, 23, 59, 59, 999); // dernier jour du mois
+
+  const sales = await prisma.sale.findMany({
+    where: { createdAt: { gte: start, lte: end } },
+  });
+
+  const total = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
+
+  return {
+    month: `${year}-${String(month).padStart(2, "0")}`,
+    nombreVentes: sales.length,
+    totalRecettes: total,
+  };
+}
+
+module.exports = { getDailyReport, getMonthlyReport };
