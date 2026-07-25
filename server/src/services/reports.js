@@ -37,14 +37,27 @@ async function getMonthlyReport(year, month) {
 
   const sales = await prisma.sale.findMany({
     where: { createdAt: { gte: start, lte: end } },
+    include: { items: { include: { product: true } } },
   });
 
   const total = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
+
+  // Liste des articles vendus dans le mois, agrégés par produit.
+  const parProduit = {};
+  for (const sale of sales) {
+    for (const item of sale.items) {
+      const key = item.product.name;
+      if (!parProduit[key]) parProduit[key] = { quantite: 0, total: 0 };
+      parProduit[key].quantite += item.quantity;
+      parProduit[key].total += item.unitPrice * item.quantity;
+    }
+  }
 
   return {
     month: `${year}-${String(month).padStart(2, "0")}`,
     nombreVentes: sales.length,
     totalRecettes: total,
+    parProduit,
   };
 }
 

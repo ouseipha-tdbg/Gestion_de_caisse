@@ -7,23 +7,36 @@ import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import MonthMultiSelect from "../components/MonthMultiSelect";
 
-function getLastMonths(n = 12) {
-  const now = new Date();
-  const months = [];
-  for (let i = 0; i < n; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-    months.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) });
-  }
-  return months;
+const MOIS_OPTIONS = [
+  { value: "01", label: "Janvier" },
+  { value: "02", label: "Février" },
+  { value: "03", label: "Mars" },
+  { value: "04", label: "Avril" },
+  { value: "05", label: "Mai" },
+  { value: "06", label: "Juin" },
+  { value: "07", label: "Juillet" },
+  { value: "08", label: "Août" },
+  { value: "09", label: "Septembre" },
+  { value: "10", label: "Octobre" },
+  { value: "11", label: "Novembre" },
+  { value: "12", label: "Décembre" },
+];
+
+// L'année en cours est toujours incluse et devient automatiquement la plus récente
+// de la liste chaque nouvelle année (aucune valeur codée en dur).
+function getAvailableYears(pastYears = 4) {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = 0; i <= pastYears; i++) years.push(currentYear - i);
+  return years;
 }
 
 export default function Rapports() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [rapport, setRapport] = useState(null);
 
-  const monthOptions = useMemo(() => getLastMonths(12), []);
+  const availableYears = useMemo(() => getAvailableYears(), []);
+  const [selectedYear, setSelectedYear] = useState(availableYears[0]);
   const [selectedMonths, setSelectedMonths] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -39,14 +52,15 @@ export default function Rapports() {
     setExportError("");
     setExporting(true);
     try {
+      const months = selectedMonths.map((m) => `${selectedYear}-${m}`);
       const res = await api.get("/reports/export", {
-        params: { months: selectedMonths.join(",") },
+        params: { months: months.join(",") },
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ventes_${selectedMonths.join("_")}.xlsx`;
+      a.download = `ventes_${selectedYear}_${selectedMonths.join("-")}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -80,7 +94,18 @@ export default function Rapports() {
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <MonthMultiSelect options={monthOptions} selected={selectedMonths} onChange={setSelectedMonths} />
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          >
+            {availableYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+          <MonthMultiSelect options={MOIS_OPTIONS} selected={selectedMonths} onChange={setSelectedMonths} />
           <Button onClick={handleDownload} disabled={selectedMonths.length === 0 || exporting}>
             <Download size={16} /> {exporting ? "Génération..." : "Télécharger"}
           </Button>
