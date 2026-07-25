@@ -19,7 +19,7 @@ router.post(
   "/",
   requireRole("ADMIN"),
   asyncHandler(async (req, res) => {
-    const { name, price, stock } = req.body;
+    const { name, price, stock, image } = req.body;
     const numericPrice = Number(price);
     const numericStock = stock == null ? 0 : Number(stock);
 
@@ -31,7 +31,7 @@ router.post(
     }
 
     const product = await prisma.product.create({
-      data: { name, price: numericPrice, stock: numericStock },
+      data: { name, price: numericPrice, stock: numericStock, image: image || null },
     });
     res.status(201).json(product);
   })
@@ -41,10 +41,11 @@ router.put(
   "/:id",
   requireRole("ADMIN"),
   asyncHandler(async (req, res) => {
-    const { name, price, stock } = req.body;
+    const { name, price, stock, image } = req.body;
     const data = {};
 
     if (name != null) data.name = name;
+    if (image !== undefined) data.image = image || null;
 
     if (price != null) {
       const numericPrice = Number(price);

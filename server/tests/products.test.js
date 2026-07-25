@@ -35,6 +35,25 @@ describe("Produits", () => {
     expect(res.body.price).toBe(500);
   });
 
+  it("enregistre et met à jour l'image d'un produit", async () => {
+    const token = await createAdminAndLogin();
+    const fakeDataUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD";
+
+    const created = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Café", price: 500, stock: 20, image: fakeDataUrl });
+
+    expect(created.body.image).toBe(fakeDataUrl);
+
+    const updated = await request(app)
+      .put(`/api/products/${created.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ image: null });
+
+    expect(updated.body.image).toBeNull();
+  });
+
   it("refuse la création de produit à un compte non-admin", async () => {
     const { token } = await createCashierAndLogin();
 
