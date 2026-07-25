@@ -2,39 +2,30 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const prisma = require("../prisma");
-const { requireAuth, requireRole } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
 
 const router = express.Router();
 
-// Le tout premier compte peut s'inscrire librement (bootstrap) et devient ADMIN.
-// Une fois qu'au moins un utilisateur existe, seul un ADMIN authentifié peut en créer d'autres.
-async function bootstrapOrAdminOnly(req, res, next) {
-  const count = await prisma.user.count();
-  if (count === 0) return next();
-  return requireAuth(req, res, () => requireRole("ADMIN")(req, res, next));
-}
-
+// Inscription publique réservée au tout premier compte (bootstrap), qui devient ADMIN.
+// Une fois qu'un utilisateur existe, la création de comptes passe par /api/users (admin uniquement).
 router.post(
   "/register",
-  asyncHandler(bootstrapOrAdminOnly),
   asyncHandler(async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const count = await prisma.user.count();
+    if (count > 0) {
+      return res.status(403).json({
+        error: "Inscription publique fermée. Un administrateur doit créer les comptes via /api/users.",
+      });
+    }
+
+    const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: "name, email et password sont requis" });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(409).json({ error: "Cet email est déjà utilisé" });
-    }
-
-    const isBootstrap = !req.user;
-    const finalRole = isBootstrap ? "ADMIN" : role === "ADMIN" ? "ADMIN" : "CASHIER";
-
     const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { name, email, password: hashed, role: finalRole },
+      data: { name, email, password: hashed, role: "ADMIN" },
     });
 
     res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role });

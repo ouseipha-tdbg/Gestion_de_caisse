@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Search, AlertCircle } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
+import { formatCFA } from "../utils/currency";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
@@ -12,7 +14,9 @@ const emptyForm = { name: "", price: "", stock: "" };
 
 export default function Produits() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const isAdmin = user?.role === "ADMIN";
+  const trackStock = settings.trackStock;
 
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState("");
@@ -50,7 +54,11 @@ export default function Produits() {
     e.preventDefault();
     setFormError("");
     try {
-      const payload = { name: form.name, price: Number(form.price), stock: Number(form.stock) || 0 };
+      const payload = {
+        name: form.name,
+        price: Math.round(Number(form.price)),
+        stock: trackStock ? Math.round(Number(form.stock)) || 0 : 0,
+      };
       if (editingId) {
         await api.put(`/products/${editingId}`, payload);
       } else {
@@ -81,6 +89,8 @@ export default function Produits() {
     if (stock < 5) return <Badge variant="amber">Stock bas ({stock})</Badge>;
     return <Badge variant="green">{stock} en stock</Badge>;
   }
+
+  const colSpan = isAdmin ? (trackStock ? 4 : 3) : trackStock ? 3 : 2;
 
   return (
     <div className="p-6">
@@ -114,7 +124,7 @@ export default function Produits() {
             <tr>
               <th className="px-4 py-3 text-left font-medium text-slate-500">Nom</th>
               <th className="px-4 py-3 text-left font-medium text-slate-500">Prix</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-500">Stock</th>
+              {trackStock && <th className="px-4 py-3 text-left font-medium text-slate-500">Stock</th>}
               {isAdmin && <th className="px-4 py-3"></th>}
             </tr>
           </thead>
@@ -122,8 +132,8 @@ export default function Produits() {
             {produitsFiltres.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
-                <td className="px-4 py-3 text-slate-600">{Number(p.price).toFixed(2)} €</td>
-                <td className="px-4 py-3">{stockBadge(p.stock)}</td>
+                <td className="px-4 py-3 text-slate-600">{formatCFA(p.price)}</td>
+                {trackStock && <td className="px-4 py-3">{stockBadge(p.stock)}</td>}
                 {isAdmin && (
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
@@ -148,7 +158,7 @@ export default function Produits() {
             ))}
             {produitsFiltres.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 4 : 3} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={colSpan} className="px-4 py-8 text-center text-slate-400">
                   Aucun produit
                 </td>
               </tr>
@@ -176,21 +186,23 @@ export default function Produits() {
             required
           />
           <Input
-            label="Prix"
+            label="Prix (F CFA)"
             type="number"
-            step="0.01"
+            step="1"
             min="0"
             value={form.price}
             onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
             required
           />
-          <Input
-            label="Stock"
-            type="number"
-            min="0"
-            value={form.stock}
-            onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
-          />
+          {trackStock && (
+            <Input
+              label="Stock"
+              type="number"
+              min="0"
+              value={form.stock}
+              onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
+            />
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>
               Annuler

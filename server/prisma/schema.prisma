@@ -12,6 +12,13 @@ enum Role {
   CASHIER
 }
 
+// COMMERCE : vend des produits physiques, le stock est suivi.
+// SERVICE  : prestations de service, pas de suivi de stock.
+enum ShopType {
+  COMMERCE
+  SERVICE
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   name      String
@@ -25,7 +32,7 @@ model User {
 model Product {
   id        Int        @id @default(autoincrement())
   name      String
-  price     Decimal    @db.Decimal(10, 2)
+  price     Int // montant en francs CFA (devise sans sous-unité)
   stock     Int        @default(0)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -34,7 +41,7 @@ model Product {
 
 model Sale {
   id        Int        @id @default(autoincrement())
-  total     Decimal    @db.Decimal(10, 2)
+  total     Int
   createdAt DateTime   @default(now())
   user      User       @relation(fields: [userId], references: [id])
   userId    Int
@@ -48,5 +55,20 @@ model SaleItem {
   product   Product @relation(fields: [productId], references: [id])
   productId Int
   quantity  Int
-  unitPrice Decimal @db.Decimal(10, 2)
+  unitPrice Int
+}
+
+// Configuration globale de la boutique (une seule ligne, gérée par l'admin).
+model Settings {
+  id               Int      @id @default(autoincrement())
+  companyName      String   @default("Ma Boutique")
+  companyLogo      String?  @db.Text // data URL base64
+  companyAddress   String?
+  companyPhone     String?
+  receiptFooter    String?  @default("Merci de votre visite !")
+  shopType         ShopType @default(COMMERCE)
+  whatsappEnabled  Boolean  @default(false)
+  whatsappTarget   String?
+  whatsappSendTime String   @default("20:00")
+  updatedAt        DateTime @updatedAt
 }

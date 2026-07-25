@@ -12,24 +12,7 @@ describe("Auth", () => {
     expect(res.body.role).toBe("ADMIN");
   });
 
-  it("refuse l'inscription non authentifiée une fois un compte déjà existant", async () => {
-    await request(app).post("/api/auth/register").send({
-      name: "Premier",
-      email: "premier@test.local",
-      password: "password123",
-    });
-
-    const res = await request(app).post("/api/auth/register").send({
-      name: "Intrus",
-      email: "intrus@test.local",
-      password: "password123",
-      role: "ADMIN",
-    });
-
-    expect(res.status).toBe(401);
-  });
-
-  it("permet à un admin authentifié de créer d'autres comptes", async () => {
+  it("refuse toute inscription publique une fois un compte déjà existant, même avec un token admin", async () => {
     await request(app).post("/api/auth/register").send({
       name: "Premier",
       email: "premier@test.local",
@@ -43,10 +26,9 @@ describe("Auth", () => {
     const res = await request(app)
       .post("/api/auth/register")
       .set("Authorization", `Bearer ${login.body.token}`)
-      .send({ name: "Caissier", email: "caissier@test.local", password: "password123" });
+      .send({ name: "Intrus", email: "intrus@test.local", password: "password123", role: "ADMIN" });
 
-    expect(res.status).toBe(201);
-    expect(res.body.role).toBe("CASHIER");
+    expect(res.status).toBe(403);
   });
 
   it("refuse la connexion avec un mauvais mot de passe", async () => {

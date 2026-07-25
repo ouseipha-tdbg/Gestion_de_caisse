@@ -8,7 +8,7 @@ describe("Ventes", () => {
     const product = await request(app)
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Café", price: 2.5, stock: 2 });
+      .send({ name: "Café", price: 500, stock: 2 });
 
     const res = await request(app)
       .post("/api/sales")
@@ -18,12 +18,12 @@ describe("Ventes", () => {
     expect(res.status).toBe(400);
   });
 
-  it("décrémente le stock et calcule le bon total", async () => {
+  it("décrémente le stock et calcule le bon total (en F CFA, montants entiers)", async () => {
     const token = await createAdminAndLogin();
     const product = await request(app)
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Café", price: 2.5, stock: 10 });
+      .send({ name: "Café", price: 500, stock: 10 });
 
     const res = await request(app)
       .post("/api/sales")
@@ -31,7 +31,7 @@ describe("Ventes", () => {
       .send({ items: [{ productId: product.body.id, quantity: 3 }] });
 
     expect(res.status).toBe(201);
-    expect(Number(res.body.total)).toBe(7.5);
+    expect(res.body.total).toBe(1500);
 
     const products = await request(app).get("/api/products").set("Authorization", `Bearer ${token}`);
     expect(products.body.find((p) => p.id === product.body.id).stock).toBe(7);
@@ -44,7 +44,7 @@ describe("Ventes", () => {
     const product = await request(app)
       .post("/api/products")
       .set("Authorization", `Bearer ${token}`)
-      .send({ name: "Café", price: 2.5, stock: 5 });
+      .send({ name: "Café", price: 500, stock: 5 });
 
     const requests = Array.from({ length: 5 }, () =>
       request(app)
@@ -61,5 +61,26 @@ describe("Ventes", () => {
     const stock = products.body.find((p) => p.id === product.body.id).stock;
     expect(stock).toBe(1);
     expect(stock).toBeGreaterThanOrEqual(0);
+  });
+
+  it("ne vérifie ni ne décrémente le stock quand la boutique est de type SERVICE", async () => {
+    const token = await createAdminAndLogin();
+    await request(app)
+      .put("/api/settings")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ shopType: "SERVICE" });
+
+    const product = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Coupe de cheveux", price: 1000, stock: 0 });
+
+    const res = await request(app)
+      .post("/api/sales")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ items: [{ productId: product.body.id, quantity: 3 }] });
+
+    expect(res.status).toBe(201);
+    expect(res.body.total).toBe(3000);
   });
 });
