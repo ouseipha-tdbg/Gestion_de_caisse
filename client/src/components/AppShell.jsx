@@ -1,15 +1,18 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ShoppingCart, Package, BarChart3, LogOut } from "lucide-react";
+import { ShoppingCart, Package, BarChart3, LogOut, Settings } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
 
 const navItems = [
   { to: "/", label: "Caisse", icon: ShoppingCart },
   { to: "/produits", label: "Produits", icon: Package },
   { to: "/rapports", label: "Rapports", icon: BarChart3 },
+  { to: "/parametres", label: "Paramètres", icon: Settings, adminOnly: true },
 ];
 
 export default function AppShell() {
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -24,18 +27,26 @@ export default function AppShell() {
     .slice(0, 2)
     .toUpperCase();
 
+  const visibleNavItems = navItems.filter((item) => !item.adminOnly || user?.role === "ADMIN");
+
   return (
     <div className="flex h-screen bg-slate-50">
       <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="flex items-center gap-2 px-6 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-            C
-          </div>
-          <span className="text-lg font-semibold text-slate-900">CaissePro</span>
+          {settings?.companyLogo ? (
+            <img src={settings.companyLogo} alt="Logo" className="h-9 w-9 rounded-lg object-contain" />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+              {(settings?.companyName || "C")[0].toUpperCase()}
+            </div>
+          )}
+          <span className="truncate text-lg font-semibold text-slate-900">
+            {settings?.companyName || "CaissePro"}
+          </span>
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {visibleNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

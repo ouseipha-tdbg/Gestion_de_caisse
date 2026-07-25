@@ -31,8 +31,28 @@ function initWhatsApp() {
     console.warn("[WhatsApp] Déconnecté :", reason);
   });
 
-  client.initialize();
+  // Le bot est une fonctionnalité optionnelle : un souci Puppeteer/Chromium ne doit
+  // jamais faire planter le reste du serveur (sinon la caisse s'arrête aussi).
+  client.on("error", (err) => {
+    ready = false;
+    console.error("[WhatsApp] Erreur du client :", err);
+  });
+
+  client.initialize().catch((err) => {
+    ready = false;
+    client = null;
+    console.error("[WhatsApp] Échec du démarrage du client :", err.message);
+  });
+
   return client;
+}
+
+// Démarre le client à la volée si l'admin vient d'activer WhatsApp depuis les paramètres
+// (sans avoir besoin de redémarrer le serveur).
+async function syncWhatsappWithSettings(settings) {
+  if (settings.whatsappEnabled && !client) {
+    initWhatsApp();
+  }
 }
 
 function isReady() {
@@ -46,4 +66,4 @@ async function sendMessage(to, text) {
   return client.sendMessage(to, text);
 }
 
-module.exports = { initWhatsApp, isReady, sendMessage };
+module.exports = { initWhatsApp, syncWhatsappWithSettings, isReady, sendMessage };

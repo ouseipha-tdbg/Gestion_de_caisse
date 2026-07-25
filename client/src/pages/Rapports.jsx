@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Calendar, Receipt, Wallet } from "lucide-react";
 import api from "../api";
+import { formatCFA } from "../utils/currency";
 import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
 
@@ -46,7 +47,7 @@ export default function Rapports() {
               </div>
               <div>
                 <p className="text-sm text-slate-500">Total des recettes</p>
-                <p className="text-2xl font-semibold text-slate-900">{rapport.totalRecettes.toFixed(2)} €</p>
+                <p className="text-2xl font-semibold text-slate-900">{formatCFA(rapport.totalRecettes)}</p>
               </div>
             </Card>
           </div>

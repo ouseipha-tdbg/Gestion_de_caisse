@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle2, AlertCircle } from "lucide-react";
 import api from "../api";
+import { useSettings } from "../context/SettingsContext";
+import { formatCFA } from "../utils/currency";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 
 export default function Caisse() {
+  const { settings } = useSettings();
+  const trackStock = settings.trackStock;
+
   const [produits, setProduits] = useState([]);
   const [search, setSearch] = useState("");
   const [panier, setPanier] = useState({}); // { [productId]: quantity }
@@ -29,7 +34,7 @@ export default function Caisse() {
   function ajouterAuPanier(produit) {
     setPanier((prev) => {
       const current = prev[produit.id] || 0;
-      if (current >= produit.stock) return prev;
+      if (trackStock && current >= produit.stock) return prev;
       return { ...prev, [produit.id]: current + 1 };
     });
   }
@@ -94,19 +99,21 @@ export default function Caisse() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {produitsFiltres.map((p) => {
             const enPanier = panier[p.id] || 0;
-            const epuise = p.stock <= 0;
+            const epuise = trackStock && p.stock <= 0;
             return (
               <button
                 key={p.id}
                 onClick={() => ajouterAuPanier(p)}
-                disabled={epuise || enPanier >= p.stock}
+                disabled={epuise || (trackStock && enPanier >= p.stock)}
                 className="flex flex-col items-start rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-indigo-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="mb-1 text-sm font-medium text-slate-900">{p.name}</span>
-                <span className="mb-2 text-lg font-semibold text-indigo-600">{Number(p.price).toFixed(2)} €</span>
-                <span className={`text-xs ${epuise ? "text-red-500" : "text-slate-400"}`}>
-                  {epuise ? "Rupture de stock" : `${p.stock} en stock`}
-                </span>
+                <span className="mb-2 text-lg font-semibold text-indigo-600">{formatCFA(p.price)}</span>
+                {trackStock && (
+                  <span className={`text-xs ${epuise ? "text-red-500" : "text-slate-400"}`}>
+                    {epuise ? "Rupture de stock" : `${p.stock} en stock`}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -131,7 +138,7 @@ export default function Caisse() {
                 <li key={l.produit.id} className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-900">{l.produit.name}</p>
-                    <p className="text-xs text-slate-500">{Number(l.produit.price).toFixed(2)} € / unité</p>
+                    <p className="text-xs text-slate-500">{formatCFA(l.produit.price)} / unité</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -144,7 +151,7 @@ export default function Caisse() {
                     <span className="w-6 text-center text-sm font-medium">{l.quantity}</span>
                     <button
                       onClick={() => changerQuantite(l.produit.id, 1)}
-                      disabled={l.quantity >= l.produit.stock}
+                      disabled={trackStock && l.quantity >= l.produit.stock}
                       className="rounded-md border border-slate-300 p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-40"
                       aria-label="Augmenter la quantité"
                     >
@@ -179,7 +186,7 @@ export default function Caisse() {
           )}
           <div className="mb-4 flex items-center justify-between">
             <span className="text-sm font-medium text-slate-500">Total</span>
-            <span className="text-xl font-semibold text-slate-900">{total.toFixed(2)} €</span>
+            <span className="text-xl font-semibold text-slate-900">{formatCFA(total)}</span>
           </div>
           <Button className="w-full" disabled={lignes.length === 0 || submitting} onClick={handleValider}>
             {submitting ? "Validation..." : "Valider la vente"}

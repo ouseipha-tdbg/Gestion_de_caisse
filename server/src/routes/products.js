@@ -23,11 +23,11 @@ router.post(
     const numericPrice = Number(price);
     const numericStock = stock == null ? 0 : Number(stock);
 
-    if (!name || price == null || Number.isNaN(numericPrice) || numericPrice < 0) {
-      return res.status(400).json({ error: "name requis, price doit être un nombre >= 0" });
+    if (!name || price == null || !Number.isInteger(numericPrice) || numericPrice < 0) {
+      return res.status(400).json({ error: "name requis, price doit être un nombre entier >= 0 (F CFA)" });
     }
-    if (Number.isNaN(numericStock) || numericStock < 0) {
-      return res.status(400).json({ error: "stock doit être un nombre >= 0" });
+    if (!Number.isInteger(numericStock) || numericStock < 0) {
+      return res.status(400).json({ error: "stock doit être un nombre entier >= 0" });
     }
 
     const product = await prisma.product.create({
@@ -48,16 +48,16 @@ router.put(
 
     if (price != null) {
       const numericPrice = Number(price);
-      if (Number.isNaN(numericPrice) || numericPrice < 0) {
-        return res.status(400).json({ error: "price doit être un nombre >= 0" });
+      if (!Number.isInteger(numericPrice) || numericPrice < 0) {
+        return res.status(400).json({ error: "price doit être un nombre entier >= 0 (F CFA)" });
       }
       data.price = numericPrice;
     }
 
     if (stock != null) {
       const numericStock = Number(stock);
-      if (Number.isNaN(numericStock) || numericStock < 0) {
-        return res.status(400).json({ error: "stock doit être un nombre >= 0" });
+      if (!Number.isInteger(numericStock) || numericStock < 0) {
+        return res.status(400).json({ error: "stock doit être un nombre entier >= 0" });
       }
       data.stock = numericStock;
     }
