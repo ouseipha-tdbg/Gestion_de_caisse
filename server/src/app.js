@@ -11,7 +11,12 @@ const settingsRoutes = require("./routes/settings");
 
 const app = express();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:5173" }));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    exposedHeaders: ["Content-Disposition"],
+  })
+);
 // Limite relevée : le logo de la boutique est envoyé en base64 dans les paramètres.
 app.use(express.json({ limit: "5mb" }));
 
