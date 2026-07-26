@@ -1,8 +1,10 @@
 const { Client, LocalAuth } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
+const qrcodeTerminal = require("qrcode-terminal");
+const QRCode = require("qrcode");
 
 let client = null;
 let ready = false;
+let currentQrDataUrl = null;
 
 function initWhatsApp() {
   if (client) return client;
@@ -12,13 +14,20 @@ function initWhatsApp() {
     puppeteer: { headless: true },
   });
 
-  client.on("qr", (qr) => {
+  client.on("qr", async (qr) => {
     console.log("\n[WhatsApp] Scanne ce QR code avec l'app WhatsApp (Appareils liés) :\n");
-    qrcode.generate(qr, { small: true });
+    qrcodeTerminal.generate(qr, { small: true });
+    try {
+      // Aussi affiché directement dans Paramètres > WhatsApp, pas besoin de regarder le terminal.
+      currentQrDataUrl = await QRCode.toDataURL(qr, { width: 280, margin: 1 });
+    } catch (err) {
+      console.error("[WhatsApp] Impossible de générer l'image du QR code :", err.message);
+    }
   });
 
   client.on("ready", () => {
     ready = true;
+    currentQrDataUrl = null;
     console.log("[WhatsApp] Client connecté et prêt.");
   });
 
@@ -28,6 +37,7 @@ function initWhatsApp() {
 
   client.on("disconnected", (reason) => {
     ready = false;
+    currentQrDataUrl = null;
     console.warn("[WhatsApp] Déconnecté :", reason);
   });
 
@@ -41,6 +51,7 @@ function initWhatsApp() {
   client.initialize().catch((err) => {
     ready = false;
     client = null;
+    currentQrDataUrl = null;
     console.error("[WhatsApp] Échec du démarrage du client :", err.message);
   });
 
@@ -59,6 +70,10 @@ function isReady() {
   return ready;
 }
 
+function getQrCode() {
+  return currentQrDataUrl;
+}
+
 async function sendMessage(to, text) {
   if (!client || !ready) {
     throw new Error("Le client WhatsApp n'est pas prêt (QR code pas encore scanné ?)");
@@ -66,4 +81,4 @@ async function sendMessage(to, text) {
   return client.sendMessage(to, text);
 }
 
-module.exports = { initWhatsApp, syncWhatsappWithSettings, isReady, sendMessage };
+module.exports = { initWhatsApp, syncWhatsappWithSettings, isReady, getQrCode, sendMessage };
