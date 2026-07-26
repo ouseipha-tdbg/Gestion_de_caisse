@@ -25,6 +25,7 @@ export default function Parametres() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState(null);
+  const [qrCode, setQrCode] = useState(null);
   const [testMessage, setTestMessage] = useState("");
 
   async function charger() {
@@ -42,18 +43,38 @@ export default function Parametres() {
     });
   }
 
-  async function chargerStatutWhatsapp() {
-    try {
-      const { data } = await api.get("/whatsapp/status");
-      setWhatsappStatus(data.ready);
-    } catch {
-      setWhatsappStatus(null);
-    }
-  }
-
   useEffect(() => {
     charger();
-    chargerStatutWhatsapp();
+  }, []);
+
+  // Rafraîchit le statut et le QR code toutes les quelques secondes, tant que le bot
+  // n'est pas connecté : le QR code affiché reste ainsi à jour sans avoir à regarder le terminal.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const { data } = await api.get("/whatsapp/status");
+        if (cancelled) return;
+        setWhatsappStatus(data.ready);
+
+        if (data.ready) {
+          setQrCode(null);
+        } else {
+          const qrRes = await api.get("/whatsapp/qr");
+          if (!cancelled) setQrCode(qrRes.data.qr);
+        }
+      } catch {
+        if (!cancelled) setWhatsappStatus(null);
+      }
+    }
+
+    poll();
+    const interval = setInterval(poll, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   function handleLogoChange(e) {
@@ -73,7 +94,6 @@ export default function Parametres() {
       await api.put("/settings", form);
       setMessage("Paramètres enregistrés.");
       await refreshSettings();
-      chargerStatutWhatsapp();
     } catch (err) {
       setError(err.response?.data?.error || "Impossible d'enregistrer les paramètres");
     } finally {
@@ -174,7 +194,7 @@ export default function Parametres() {
               <span
                 className={`text-xs font-medium ${whatsappStatus ? "text-emerald-600" : "text-slate-400"}`}
               >
-                {whatsappStatus ? "● Connecté" : "○ Non connecté (QR code pas scanné)"}
+                {whatsappStatus ? "● Connecté" : "○ Non connecté"}
               </span>
             )}
           </div>
@@ -190,6 +210,23 @@ export default function Parametres() {
               Activer l'envoi automatique du rapport journalier
             </label>
 
+            {form.whatsappEnabled && !whatsappStatus && (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                {qrCode ? (
+                  <>
+                    <img src={qrCode} alt="QR code WhatsApp" className="h-56 w-56" />
+                    <p className="text-center text-xs text-slate-500">
+                      Scanne ce QR code avec WhatsApp : Paramètres → Appareils liés → Lier un appareil.
+                      <br />
+                      Il se renouvelle automatiquement s'il expire.
+                    </p>
+                  </>
+                ) : (
+                  <p className="py-8 text-sm text-slate-400">Génération du QR code...</p>
+                )}
+              </div>
+            )}
+
             <Input
               label="Numéro cible (ex: 22890000000@c.us) ou groupe (@g.us)"
               value={form.whatsappTarget}
@@ -202,7 +239,7 @@ export default function Parametres() {
               onChange={(e) => setForm((f) => ({ ...f, whatsappSendTime: e.target.value }))}
             />
 
-            <Button type="button" variant="secondary" onClick={handleTestWhatsapp}>
+            <Button type="button" variant="secondary" disabled={!whatsappStatus} onClick={handleTestWhatsapp}>
               <Send size={14} /> Tester l'envoi maintenant
             </Button>
             {testMessage && <p className="text-sm text-emerald-600">{testMessage}</p>}

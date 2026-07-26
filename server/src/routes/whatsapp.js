@@ -1,7 +1,7 @@
 const express = require("express");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
-const { isReady, sendMessage } = require("../whatsapp/client");
+const { isReady, getQrCode, sendMessage } = require("../whatsapp/client");
 const { getDailyReport } = require("../services/reports");
 const { getSettings } = require("../services/settings");
 const { formatDailyReportMessage } = require("../whatsapp/message");
@@ -12,6 +12,10 @@ router.use(requireAuth, requireRole("ADMIN"));
 
 router.get("/status", (req, res) => {
   res.json({ ready: isReady() });
+});
+
+router.get("/qr", (req, res) => {
+  res.json({ qr: isReady() ? null : getQrCode() });
 });
 
 router.post(
